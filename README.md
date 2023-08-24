@@ -1,6 +1,6 @@
 ## secp256k1-scala
 
-An (almost) dependency-free scala implementation of ecc arithmetic for the
+An ~~(almost)~~ dependency-free scala implementation of ecc arithmetic for the
 curve used by bitcoin (secp256k1).
 
 ### Usage

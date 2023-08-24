@@ -1,1 +1,0 @@
-//> using lib "org.typelevel::spire:0.18.0"
