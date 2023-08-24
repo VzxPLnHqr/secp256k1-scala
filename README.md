@@ -10,13 +10,23 @@ curve used by bitcoin (secp256k1).
 ```scala
 import Secp256k1.*
 
-// a very secure private key (scalar value in prime field Z_n)
-val k = Z_n(12345)
+// demonstrating ECDH whereby Alice and Bob calculate a shared secret
 
-// generator point for secp256k1
-val G = Point.G
+// a very secure private key chosen by Alice
+// private keys are values in prime field Z_n
+val a = Z_n(12345)
 
-val point = k.multByPoint(G)
+val pointA = a * G
+
+// also a great choice of private key by Bob
+val b = Z_n(54321)
+
+val pointB = b * G
+
+val sharedSecretB = b * pointA
+val sharedSecretA = a * pointB
+
+assert(sharedSecretB == sharedSecretA)
 
 ```
 
