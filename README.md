@@ -30,6 +30,8 @@ assert(sharedSecretB == sharedSecretA)
 
 ```
 
+3. or you can run the tests: `scala-cli test .`
+
 ### Disclaimer - do not use with real funds
 
 This implementation is for learning purposes. 
