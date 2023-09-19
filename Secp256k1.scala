@@ -1,3 +1,8 @@
+//> using publish.organization "vzxplnhqr"
+//> using publish.name "secp256k1-scala"
+
+package ecc
+
 object Secp256k1:
   // some curve parameters:
   // y^2 = x^3 + 7 mod p
