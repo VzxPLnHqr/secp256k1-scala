@@ -1,5 +1,6 @@
 //> using publish.organization "vzxplnhqr"
 //> using publish.name "secp256k1-scala"
+//> using publish.version "0.1.2-SNAPSHOT"
 
 package ecc
 
