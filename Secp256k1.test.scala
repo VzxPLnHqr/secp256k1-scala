@@ -33,9 +33,14 @@ class Secp256k1Test extends munit.FunSuite {
       case given Random[IO] => for {
         _ <- (for {
           k <- Z_n.rand
+          pointP <- IO(k*G)
           kBytes = k.bytes
+          pointPbytes = pointP.bytes
+          pointPprime = Point.fromValidHex(pointPbytes.toHex)
           kPrime = Z_n.fromValidHex(kBytes.toHex)
-        } yield assertEquals(kPrime,k)).replicateA_(100)
+          _ <- IO(assertEquals(kPrime,k))
+          _ <- IO(assertEquals(pointP,pointPprime))
+        } yield ()).replicateA_(10)
       } yield ()
     }.unsafeRunSync()
   }
