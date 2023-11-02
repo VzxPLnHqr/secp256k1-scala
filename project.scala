@@ -1,0 +1,6 @@
+//> using publish.organization "vzxplnhqr"
+//> using publish.name "secp256k1-scala"
+//> using publish.version "0.1.2-SNAPSHOT"
+//> using lib "org.typelevel::cats-effect:3.5.1"
+//> using lib "org.scodec::scodec-bits::1.1.37"
+//> using lib "org.scalameta::munit::0.7.29"

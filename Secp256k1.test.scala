@@ -1,6 +1,3 @@
-//> using lib "org.scalameta::munit::0.7.29"
-//> using lib "org.typelevel::cats-effect:3.5.1"
-
 import ecc.*
 import Secp256k1.*
 import cats.effect.*
