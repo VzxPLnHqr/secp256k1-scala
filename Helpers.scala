@@ -15,16 +15,20 @@ extension (k: Z_n)
   def bytes: ByteVector = ByteVector(k.bigInt.toByteArray.takeRight(32)).padLeft(32)
 
 extension (pt: Point)
-  def bytes: ByteVector = 
-    ByteVector(pt.x.bigInt.toByteArray.takeRight(32)).padLeft(32) ++ ByteVector(pt.y.bigInt.toByteArray.takeRight(32)).padLeft(32)
+  def bytes: ByteVector = pt match {
+    case CurvePoint(x,y) => ByteVector(x.bigInt.toByteArray.takeRight(32)).padLeft(32) ++ ByteVector(y.bigInt.toByteArray.takeRight(32)).padLeft(32)
+    case PointAtInfinity => ByteVector.fill(64)(0)
+  }
 
 extension (o: Z_n.type)
   /** random element of Z_n (a private key) **/
   def rand(using Random[IO]): IO[Z_n] = Random[IO].betweenBigInt(0,n).map(Z_n(_))
   def fromValidHex(hex: String): Z_n = Z_n(BigInt(hex,16))
+  def fromBytes(bytes: ByteVector): Z_n = fromValidHex(bytes.toHex)
 
 extension (o: Z_p.type)
   def fromValidHex(hex: String): Z_p = Z_p(BigInt(hex,16))
+  def fromBytes(bytes: ByteVector): Z_p = fromValidHex(bytes.toHex)
 
 extension (o: Point.type)
   /** random point on the curve. Not very useful since it forgets k **/
@@ -32,7 +36,10 @@ extension (o: Point.type)
   def fromBytes(bytes: ByteVector): Point = fromValidHex(bytes.toHex)
   def fromValidHex(hex: String): Point = {
     require(hex.length == 128,"invalid length of hex")
-    CurvePoint(Z_p.fromValidHex(hex.take(64)), Z_p.fromValidHex(hex.drop(64)))
+    ByteVector.fromValidHex(hex) match {
+      case bytes if(bytes == ByteVector.fill(64)(0)) => PointAtInfinity
+      case bytes => CurvePoint(Z_p.fromBytes(bytes.take(32)), Z_p.fromBytes(bytes.drop(32)))
+    }
   }
 
 extension (random: Random[IO])
