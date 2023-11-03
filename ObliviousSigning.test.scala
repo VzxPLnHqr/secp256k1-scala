@@ -5,6 +5,7 @@ import cats.effect.std.*
 import cats.syntax.all.*
 import cats.effect.unsafe.implicits.global
 import scodec.bits.*
+import bips.Bip340.*
 
 class ObliviousSigning extends munit.FunSuite {
   // taken mostly from: https://telaviv2019.scalingbitcoin.org/files/scriptless-lotteries-on-bitcoin-from-oblivious-transfer.pdf
@@ -36,46 +37,6 @@ class ObliviousSigning extends munit.FunSuite {
       case true => privateKey*G + pointH
     }
 
-    // the "challenge" used when constructing schnoor sigs. Sometimes this
-    // is called "e". Schnorr signature s = k + e*d where e is the challenge,
-    // and k is the dlog of the nonce point R. The final signature is (s,R).
-    def challenge(bytes: ByteVector): Z_n = Z_n.fromBytes(bytes.sha256)
-    
-    // schnorr signing
-    def sign(privateKey: Z_n, message: ByteVector, nonce: Z_n): (Z_n,Point) =
-      val (publicKey, noncePoint) = (privateKey*G, nonce*G)
-      (nonce + (challenge(publicKey.bytes ++ noncePoint.bytes ++ message) * privateKey), nonce*G)
-
-    // verify schnorr signature
-    def verifySignature(s: Z_n, noncePoint: Point, message: ByteVector, publicKey: Point): Boolean =
-      (s*G) == (noncePoint + (challenge(publicKey.bytes ++ noncePoint.bytes ++ message)*publicKey))
-
-    {
-      // schnorr sig test (just to check the above defined functions work)
-      val (s,pointR) = sign(priv_receiver, message = ByteVector(1), nonce = Z_n(5555))
-      assertEquals(verifySignature(s,pointR, message = ByteVector(1), publicKey = priv_receiver*G),true)
-    }
-
-    // create an adaptor signature
-    def adaptSign(privateKey: Z_n, message: ByteVector, nonce: Z_n, adaptorPoint: Point): (Z_n,Point,Point) = 
-      val (publicKey, noncePoint) = (privateKey*G, nonce*G)
-      (nonce + (challenge(publicKey.bytes ++ (noncePoint + adaptorPoint).bytes ++ message)*privateKey), nonce*G, adaptorPoint)
-
-    def verifyAdaptorSignature(s: Z_n, message: ByteVector, noncePoint: Point, adaptorPoint: Point, publicKey: Point) =
-      (s*G) == (noncePoint + (challenge(publicKey.bytes ++ (noncePoint + adaptorPoint).bytes ++ message)*publicKey))
-    
-    // repair adaptor signature with knowledge of the dlog of the adaptor point
-    def completeAdaptorSignature(s: Z_n, noncePoint: Point, adaptorPoint: Point, dlogAdaptorPoint: Z_n): (Z_n, Point) =
-      (s + dlogAdaptorPoint, adaptorPoint + noncePoint)
-
-    {
-      // adaptor sig test (just to check the above defined functions work)
-      val (s,noncePoint,adaptorPoint) = adaptSign(priv_receiver, message = ByteVector(1), nonce = Z_n(5555), adaptorPoint = Z_n(4444)*G)
-      assertEquals(verifyAdaptorSignature(s,message = ByteVector(1),noncePoint,adaptorPoint, publicKey = priv_receiver*G), true)
-      // now complete the adaptor sig to get a valid full sig
-      val (sPrime, pointRprime) = completeAdaptorSignature(s,noncePoint,adaptorPoint, dlogAdaptorPoint = Z_n(4444))
-      assertEquals(verifySignature(sPrime,pointRprime, message = ByteVector(1), publicKey = priv_receiver*G), true)
-    }
     /** end of Interlude -- done building helper functions, back to our protocol now
      * **************************************************************************************/
 
@@ -84,6 +45,12 @@ class ObliviousSigning extends munit.FunSuite {
 
     // Receiver calculates and sends T to Sender (it is a simple Pedersen commitment)
     val pointT = commit(b,priv_receiver)
+
+    // (ideally) Receiver also sends to Sender a proof that Receiver knows `b` 
+    // and `priv_receiver` such that T = priv_receiver*G + b*H
+    // Such a proof is basically a slightly more generalied schnorr signature
+    // and we skip that here. In this case of oblivious signing, the Sender
+    // may not actually care either.
 
     // Sender has a private key of its own
     val priv_sender = Z_n(727272727)
