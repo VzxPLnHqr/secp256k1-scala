@@ -5,7 +5,7 @@ import bips.Bip340.*
 import scala.util.chaining.*
 import scala.util.Try
 
-class ObliviousSigning extends munit.FunSuite {
+class ObliviousTest extends munit.FunSuite {
   // taken mostly from: https://telaviv2019.scalingbitcoin.org/files/scriptless-lotteries-on-bitcoin-from-oblivious-transfer.pdf
   /** Alice and Bob agree on 2 messages, m0 and m1.
    *  Alice obliviously signs both, but Bob can only complete the signature
@@ -95,9 +95,9 @@ class ObliviousSigning extends munit.FunSuite {
       // Sender calculates and sends public key `A`
       val A = a*G
 
-      // Sender has two equal-length messages of length a multiple of 16
-      val m0 = ByteVector("stand up!".getBytes).padRight(16)
-      val m1 = ByteVector("sit down!".getBytes).padRight(16)
+      // Sender has two messages.
+      val m0 = ByteVector("stand up!".getBytes)
+      val m1 = ByteVector("sit down!".getBytes)
 
       // Receiver has private key `b`
       val b = Z_n(98989)
@@ -124,22 +124,24 @@ class ObliviousSigning extends munit.FunSuite {
       // only one of the keys. One of two oblivious transfer!
 
       /** symmetric encryption/decryption scheme (AES) **/
-      /*def encrypt(key: ByteVector, message: ByteVector): Try[ByteVector] =
-        val cipher = javax.crypto.Cipher.getInstance("AES/CBC/NoPadding")
+      def encrypt(key: ByteVector, message: ByteVector): Try[ByteVector] =
+        val cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding")
         cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, new javax.crypto.spec.SecretKeySpec(key.toArray.take(16),"AES"))
         Try(cipher.doFinal(message.toArray).pipe(ByteVector(_)))
 
       def decrypt(key: ByteVector, ciphertext: ByteVector): Try[ByteVector] = 
-        val cipher = javax.crypto.Cipher.getInstance("AES/CBC/NoPadding")
+        val cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding")
         cipher.getParameters()
-        cipher.init(javax.crypto.Cipher.DECRYPT_MODE, new javax.crypto.spec.SecretKeySpec(key.toArray.take(16),"AES"), cipher.getParameters())
+        cipher.init(javax.crypto.Cipher.DECRYPT_MODE, new javax.crypto.spec.SecretKeySpec(key.toArray.take(16),"AES"))
         Try(cipher.doFinal(ciphertext.toArray).pipe(ByteVector(_)))
 
       // Sender encrypts both messages with respective keys
       // and sends both to Receiver
       val e0 = encrypt(k0,m0)
       val e1 = encrypt(k1,m1)
-      */
+      
       // Receiver can only decrypt one of the messages using k_c
+      assert(e0.flatMap(decrypt(k_c,_)).isFailure) // as expected!
+      assert(e1.flatMap(decrypt(k_c,_)).map(_ == m1).isSuccess)
   }
 }
