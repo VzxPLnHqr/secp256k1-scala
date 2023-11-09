@@ -49,6 +49,7 @@ object Secp256k1:
       def pow(exp: BigInt):Z_p = x.modPow(exp,p)
       def /(y: Z_p): Z_p = div(x,y)
       def reciprocal: Z_p = div(one,x)
+      def sqrt: Option[(Z_p,Z_p)] = FiniteField.PrimeOrder.sqrt(p,x.bigInt).map{ case (r1,r2) => (Z_p(r1),Z_p(r2))}
       def bigInt: BigInt = x
 
   // allows us to refer to the Z_p instead of having to do Z_p.Z_p
@@ -76,9 +77,19 @@ object Secp256k1:
         multiplyByScalar(pt.double, k / Z_n(2)) // double when even
     }
 
+    /**
+      * Given an x-coordinate, find the y-coordinate, if it exists.
+      *
+      * @param x, x-coordinate
+      * @return +- y-coordinate, if it exists
+      */
+    def solveForY(x: Z_p): Option[(Z_p,Z_p)] = 
+      FiniteField.PrimeOrder.sqrt(p, (x.pow(3) + Z_p(7)).bigInt)
+        .map{ case (y1,y2) => (Z_p(y1), Z_p(y2))}
+
     extension (pt: Point)
       def isValid: Boolean = pt match {
-        case CurvePoint(x, y) => y.pow(2) == x.pow(3) + Z_p(7)
+        case CurvePoint(x, y) => y.pow(2) == (x.pow(3) + Z_p(7))
         case PointAtInfinity => true
       }
       def double: Point = pt match {

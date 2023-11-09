@@ -42,6 +42,39 @@ extension (o: Point.type)
     }
   }
 
+extension (o: Secp256k1.type)
+  /**
+  * Deterministically coerce a message to be represented as an ecc point. 
+  * This is done by recursively hashing the messaage until the result is a valid 
+  * x-coordinate. The expected number of hash attempts is 2, but sometimes it 
+  * can take a few more attempts. By convention we return the point (x,y)
+  * where the y-coordinate is even.
+  *
+  * @param msg
+  * @return 
+      a valid point with even y-coordinate.
+  */
+  def coerceToPoint(msg: ByteVector): Point = {
+    @scala.annotation.tailrec
+    def inner(last: ByteVector): Point = Point.solveForY(Z_p.fromBytes(last)) match {
+      case Some((y1,y2)) => 
+        if( CurvePoint(Z_p.fromBytes(last), y1).isValid)
+          if(y1.bigInt % 2 == 0) 
+            CurvePoint(Z_p.fromBytes(last), y1)
+          else
+            CurvePoint(Z_p.fromBytes(last), y1.negate)
+        else if( CurvePoint(Z_p.fromBytes(last),y2).isValid)
+          if(y2.bigInt % 2 == 0) 
+            CurvePoint(Z_p.fromBytes(last), y2)
+          else
+            CurvePoint(Z_p.fromBytes(last), y2.negate)
+        else
+          inner(last.sha256)
+      case None => inner(last.sha256)
+    }
+    inner(msg.sha256)
+  }
+
 extension (random: Random[IO])
       /**
       * select a random big integer
