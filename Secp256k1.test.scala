@@ -4,6 +4,7 @@ import cats.effect.*
 import cats.effect.std.*
 import cats.syntax.all.*
 import cats.effect.unsafe.implicits.global
+import scodec.bits.*
 
 class Secp256k1Test extends munit.FunSuite {
   test("ECDH") {
@@ -40,5 +41,14 @@ class Secp256k1Test extends munit.FunSuite {
         } yield ()).replicateA_(10)
       } yield ()
     }.unsafeRunSync()
+  }
+  
+  test("coerceToPoint") {
+    // a point with unkown dlog is H = (x,y) = (sha256(G),y) where G is
+    // given in uncompressed form
+    val H = Secp256k1.coerceToPoint(ByteVector.fromValidHex("04") ++ G.bytes)
+    // check x-coordinate manually
+    assert(H.x.bytes == ByteVector.fromValidHex("50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"))
+    assert(H.isValid) // check x and y coordinates are on the curve
   }
 }

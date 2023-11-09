@@ -5,6 +5,7 @@ import cats.effect.*
 import cats.effect.std.Random
 import scodec.bits.*
 import cats.syntax.all.*
+import scala.annotation.targetName
 
 /**
   * Some helper and/or syntactic convenience methods below which make the above
@@ -13,6 +14,10 @@ import cats.syntax.all.*
 
 extension (k: Z_n)
   def bytes: ByteVector = ByteVector(k.bigInt.toByteArray.takeRight(32)).padLeft(32)
+
+extension (x: Z_p)
+  @targetName("Z_p_bytes")
+  def bytes: ByteVector = ByteVector(x.bigInt.toByteArray.takeRight(32)).padLeft(32)
 
 extension (pt: Point)
   def bytes: ByteVector = pt match {
