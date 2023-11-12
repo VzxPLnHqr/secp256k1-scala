@@ -22,8 +22,11 @@ object FiniteField:
         // note: for secp256k1 points this is in fact the case, 
         // so we can use this to check if a point is on the elliptic curve.
         val r1 = n.modPow((p + 1) / 4, p)
-        val r2 = r1.modInverse(p)
-        Some((r1,r2))
+        val r2 = -r1
+        if( ((r1 * r1).mod(p)) == n && ((r2 * r2).mod(p) == n) )
+          Some((r1,r2))
+        else
+          None
       } else {
         // for primes such that p != 3 (mod 4)
 
