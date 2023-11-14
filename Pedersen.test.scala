@@ -2,8 +2,56 @@ import ecc.*
 import Secp256k1.*
 import scodec.bits.*
 import bips.Bip340.*
+import scala.util.chaining.*
 
 class PedersenCommitments extends munit.FunSuite {
+
+  test("bit commitment") {
+    // SIMPLE PEDERSEN BIT COMMITMENT
+    //
+    // Suppose a prover P wants to convince a verifier V
+    // that they know b and s such that:
+    // C = b*G + s*H and also convince the verifier that b is either 0 or 1
+    //
+    // G, H, F are independent generator points. G can be the usual point G 
+    // in the secp256k1 specification, but H and F should be determined in NUMS
+    // fashion such that the discrete log of either is unknown.
+    // Prover and Verifier previous agree on how to calculate such points.
+    val H = Secp256k1.coerceToPoint(G.bytes)
+    val F = Secp256k1.coerceToPoint(H.bytes)
+
+    // `b` is the value of the bit that the Prover is commiting to.
+    // say b = 1
+    val b = Z_n(1)
+    // choose random scalars s,x,y,r2,r3
+    //    note: these are chosen very insecurely below, just for demonstration
+    val s = ByteVector("s".getBytes).sha256.pipe(Z_n.fromBytes)
+    val x = ByteVector("x".getBytes).sha256.pipe(Z_n.fromBytes)
+    val y = ByteVector("y".getBytes).sha256.pipe(Z_n.fromBytes)
+    val r2 = ByteVector("r2".getBytes).sha256.pipe(Z_n.fromBytes)
+    val r3 = ByteVector("r3".getBytes).sha256.pipe(Z_n.fromBytes)
+
+    // Commit:
+    val C = b*G + s*H
+    val R1 = x*G + y*H
+    val R2 = -x*x*H + r2*F
+    val R3 = x*H + r3*F
+
+    // Challenge:
+    // hash everything the verifier depends on (Fiat-shamir)
+    val e = Z_n.fromBytes((G.bytes ++ H.bytes ++ F.bytes ++ C.bytes ++ R1.bytes ++ R2.bytes ++ R3.bytes).sha256)
+
+    // Send:
+    val u = x + e*b
+    val v = y + e*s
+    val r = r2 + e*r3
+
+    // Verifier receives (C,R1,R2,R3,u,v,r)
+    // Check:
+    assert( u*G + v*H == R1 + e*C )
+    assert( u*(e - u)*H + r*F == R2 + e*R3 )
+
+  }
 
   test("scalar commitment") {
     // SIMPLE PEDERSEN COMMITMENT
