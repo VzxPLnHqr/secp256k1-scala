@@ -35,7 +35,7 @@ class PedersenCommitments extends munit.FunSuite {
     val C = b*G + s*H
     val R1 = x*G + y*H
     val R2 = -x*x*H + r2*F
-    val R3 = x*H + r3*F
+    val R3 = x*(Z_n(1)-Z_n(2)*b)*H + r3*F
 
     // Challenge:
     // hash everything the verifier depends on (Fiat-shamir)
