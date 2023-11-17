@@ -10,7 +10,7 @@ class RangeProofTest extends munit.FunSuite {
     // SIMPLE RANGEPROOF FOR SINGLE-BIT COMMITMENT
     // 
     // Much thanks to Liam Eagan for the helpful chats. Any errors here are not
-    // his. Rather, this is an adept to codify a simple range proof which proves
+    // his. This is an attempt to codify a simple range proof which proves
     // knowledge of a bit.
     // 
     // Suppose a prover P wants to convince a verifier V
@@ -47,36 +47,26 @@ class RangeProofTest extends munit.FunSuite {
 
     // Prover sends to Verifier the following commitments. Prover will be able to
     // us its knowledge of b,s,x,y to construct two new scalars u,v as a function
-    // of the challenge, e0, which is provided by the Verifier.
+    // of the challenge, e, which is provided by the Verifier.
     // Commit:
     val C = b*G + s*H
     val R1 = x*G + y*H
 
-    // Challenge:
-    // Verifier simply calculates e0 as the hash of the "transcript" so far,
-    // including the independent generator points G,H we have so far used.
-    val e0 = Z_n.fromBytes((G.bytes ++ H.bytes ++ C.bytes ++ R1.bytes))
+    // Send:
+    // Given challenge e from Verifier
+    // Prover calculates and sends u(e),v(e). 
+    // Notice that these equations can be seen as simple polynomials in e. 
+    def u(e: Z_n):Z_n = x + e*b
+    def v(e: Z_n):Z_n = y + e*s
 
-    // Response:
-    // Prover calculates and sends u,v. 
-    // Notice that these equations can be seen as polynomials in e. 
-    val u = x + e0*b
-    val v = y + e0*s
-
-    // Check:
-    // Verifier has so far received C,R1,u,v. If the following assertion passes
-    // then Verifier is convinced Prover knows b. Prover has not leaked any information
-    // about the value of b.
-    assert( u*G + v*H == R1 + e0*C )
-
-    // However, Verifier is not yet convinced that b is a bit. Rather, b could be
-    // any scalar. Prover will now show that b is in fact a bit. 
+    // However, Verifier will not be convinced that b is a bit. Rather, b could be
+    // any scalar. Prover will show that b is in fact a bit. 
     
     // Regardless of Prover's choice of b, so long as b = 0 or b = 1, 
     // the following "bit check identity" will hold:
     // `b (1 - b) = 0`
 
-    // Here is the trick: before obtaining another challenge e1 from Verifier,
+    // Here is the trick:
     // Prover constructs a polynomial f(z) such that the highest order term
     // has coefficient `b (1 - b)`. A simple way to do this is
     // f(z) = (x + z*b)(z - (x + z*b)) where x is the random value chosen above
@@ -97,16 +87,26 @@ class RangeProofTest extends munit.FunSuite {
     val R2 = -x*x*H + r2*F
     val R3 = x*(Z_n(1)-Z_n(2)*b)*H + r3*F
 
-    // Challenge:
-    // hash everything the verifier depends on (Fiat-shamir)
-    val e1 = Z_n.fromBytes((G.bytes ++ H.bytes ++ F.bytes ++ C.bytes ++ R1.bytes ++ R2.bytes ++ R3.bytes).sha256)
-
     // Send:
-    val u1 = x + e1*b
-    val r = r2 + e1*r3
+    // Given challenge e from Verifier
+    // Prover calculates and sends r(e)
+    def r(e: Z_n): Z_n = r2 + e*r3
 
-    // Check:
-    assert( u1*(e1 - u1)*H + r*F == R2 + e1*R3 )
+    // Challenge:
+    // By hashing everything the verifier depends on (Fiat-shamir),
+    // Prover can use a single challenge value to complete and send the proofs.
+    val e = Z_n.fromBytes((G.bytes ++ H.bytes ++ F.bytes ++ C.bytes ++ R1.bytes ++ R2.bytes ++ R3.bytes).sha256)
+
+    // Check (proof of knowledge of b):
+    // Verifier has received C,R1,u(e),v(e)
+    // If the following assertion passes then Verifier is convinced 
+    // Prover knows b. Prover has not leaked any information
+    // about the value of b.
+    assert( u(e)*G + v(e)*H == R1 + e*C )
+
+    // Check (proof that b is a bit):
+    // Verifier has received R2,R3,r(e) in addition to C1,R1,u(e),v(e)
+    assert( u(e)*(e - u(e))*H + r(e)*F == R2 + e*R3 )
 
     // If above assertion passes, Verifier is now sufficiently convinced that
     // prover's choice of b is either 0 or 1
