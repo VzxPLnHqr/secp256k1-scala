@@ -74,6 +74,74 @@ class ObliviousTest extends munit.FunSuite {
     // ^^^^^^ if above assertion passes, it means Receiver successfily verified Sender's sig for m1 ^^^^^^^^^^^
   }
 
+  test("oblivious signing - 1 of n sigs") {
+    // Generalizing the 1 of 2 case (see above) to 1 of n
+
+    // Sender and Receiver agree on a second generator point H 
+    // with unknown discrete log relative to G
+    val H = Secp256k1.coerceToPoint(G.bytes)
+
+    // Let n be the number of messages. Only one of them will end up with a
+    // valid signature from Alice (Sender)
+    val n = 10
+    
+    // Sender constructs `n` messages
+    def m(index: Int): ByteVector = ByteVector(s"message $index".getBytes)
+
+    // Sender sends list of all possible messages to Receiver
+    val messages = List.range(0,n).map(m(_))
+
+    // Receiver will choose `c` which is one of {0,1,2,...,n}
+    // Receiver chooses a blinding factor `b` to hide choice `c`
+    val b = Z_n(83838383)
+
+    def commit(choice: Int, blindingFactor: Z_n): Point = choice match {
+      case 0 => b*G
+      case c => b*G + Z_n(c)*H
+    }
+
+    // Say Receiver commits to c = 7
+    // Receiver calculates and sends point T
+    val T = commit(choice = 7, blindingFactor = b)
+
+    // Sender has a private key of its own
+    val a = Z_n(727272727)
+    val A = a * G
+
+    // Sender calculates all possible adaptor points
+    val adaptorPoints = List.range(0,n).map(Z_n(_)).map(c => T - c*H)
+
+    // Sender prepares a PRNG so it can shuffle the list of messages.
+    val PRNG = scala.util.Random(seed = 72324)
+
+    // Sender creates and sends adaptor signatures
+    // Notice how Sender shuffles the messages before signing!
+    val adaptorSigs = PRNG.shuffle(messages).zip(adaptorPoints).zipWithIndex.map{
+      case ((message,adaptorPoint), index) => 
+        val nonce = ByteVector(s"super secure nonce $index".getBytes).sha256.pipe(Z_n.fromBytes)
+        adaptSign(privateKey = a, message = message, nonce = nonce, adaptorPoint = adaptorPoint)
+    }
+
+    // Receiver tries to complete each adaptor signature. Only one such completion
+    // will be a valid schnorr signature.
+    val possibleSigs = adaptorSigs.map{
+      case (s,pointR,pointT) => completeAdaptorSignature(s,pointR,pointT,dlogAdaptorPoint = b)
+    }
+
+    // check each "completed" signature for validity by checking each possible message
+    // the number of checked sigs will be n^2 where n is the number of possible messages
+    val verifiedSigs = possibleSigs.flatMap {
+      case (s,pointR) => messages.map(msg => verifySignature(s,pointR,msg,publicKey = A))
+    }
+
+    assert(verifiedSigs.size == n*n)
+    assert(verifiedSigs.filter(_ == true).size == 1)   
+    // if the above assertion passed, then Receiver now has possession of a
+    // single valid shnorr signature for a single one of the possible messages.
+    // Due to Sender shuffling the list of messages before signing, the Receiver
+    // was unable to predict ahead of time which message it will receive.
+  }
+
   test("oblivious transfer - one of two") {
     /**
       * "Simplest Oblivious Transfer Protocol" by T. Chou and C. Orlandi
